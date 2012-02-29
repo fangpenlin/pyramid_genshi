@@ -60,6 +60,9 @@ class TranslationStringAdaptor(gettext.NullTranslations):
         
     def dungettext(self, domain, msgid1, msgid2, n):
         return self.ungettext(msgid1, msgid2, n, domain)
+    
+def renderer_factory(path):
+    return renderers.template_renderer_factory(path, GenshiTemplateRenderer)
         
 class GenshiTemplateRenderer(object):
     implements(ITemplateRenderer)
@@ -90,11 +93,15 @@ class GenshiTemplateRenderer(object):
                 localizer.pluralize,
                 default_domain=self.default_domain
             )
-            self.translator = Translator(self.adaptor)
+            self._translator = Translator(self.adaptor)
         # no i18n available, just use translator with NullTranslations
         else:
-            self.translator = Translator()
-        
+            self._translator = Translator()
+            
+        # TODO: handle auto reload here
+        self._loader = TemplateLoader(callback=self._tmpl_loaded)
+        self._tmpl = self.loader.load(self.path)
+                
     def translate(self, *args, **kwargs):
         kwargs.setdefault('domain', self.default_domain)
         ts = TranslationString(*args, **kwargs)
@@ -106,38 +113,52 @@ class GenshiTemplateRenderer(object):
         """Called when a template is loadded by loader
         
         """
-        self.translator.setup(tmpl)
+        self._translator.setup(tmpl)
         
+    @property
+    def loader(self):
+        """Genshi template loader
+        
+        """
+        return self._loader
+        
+    @property
+    def translator(self):
+        """Genshi i18n translator filter
+        
+        """
+        return self._translator
+    
     #@reify # avoid looking up reload_templates before manager pushed
     @property
     def template(self):
-        # TODO: handle auto reload here
-        loader = TemplateLoader(callback=self._tmpl_loaded)
+        """Loaded Genshi Template
         
-        tmpl = loader.load(self.path)
+        """
+        return self._tmpl
+    
+    def render(self, **values):
+        """Render template with values
         
-        def render(**values):
-            values.setdefault('_', self.translate)
-            stream = tmpl.generate(**values)
-            method = self.settings.get('genshi.method', 'html')
-            body = stream.render(method=method)
-            return body
+        """
+        values.setdefault('_', self.translate)
+        stream = self.template.generate(**values)
+        method = self.settings.get('genshi.method', 'html')
+        body = stream.render(method=method)
+        return body
         
-        return render
-
+    # implement ITemplateRenderer interface
+    
     def implement(self):
-        return self.template
+        return self.render
     
     def __call__(self, value, system):
         try:
             system.update(value)
         except (TypeError, ValueError):
             raise ValueError('renderer was passed non-dictionary as value')
-        result = self.template(**system)
+        result = self.render(**system)
         return result
-    
-def renderer_factory(path):
-    return renderers.template_renderer_factory(path, GenshiTemplateRenderer)
 
 def includeme(config):
     config.add_renderer('.genshi', renderer_factory)
