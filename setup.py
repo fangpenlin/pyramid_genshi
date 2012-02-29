@@ -5,8 +5,6 @@ use_setuptools()
 
 from setuptools import setup, find_packages
 
-extra = {}
-
 try:
     here = os.path.abspath(os.path.dirname(__file__))
     README = open(os.path.join(here, 'README.txt')).read()
@@ -16,6 +14,11 @@ except:
     CHANGES = ''
 
 version = '0.1.0'
+
+requires = [
+    'Genshi',
+    'Pyramid'
+]
 
 setup(
     name='pyramid_genshi',
@@ -33,9 +36,9 @@ setup(
     license="MIT",
     version=version,
     packages=find_packages(),
+    include_package_data=True,
     zip_safe=False,
-    install_requires=[
-        'Genshi',
-        'Pyramid'
-    ], **extra
+    test_suite="pyramid_genshi.tests",
+    install_requires=requires,
+    test_requires=requires, 
 )

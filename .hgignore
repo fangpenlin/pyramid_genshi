@@ -6,3 +6,5 @@ distribute-0.6.14.tar.gz
 *.pyc
 pyramid_genshi.egg-info/
 env/
+build/
+dist/
