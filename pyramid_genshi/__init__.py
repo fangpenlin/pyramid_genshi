@@ -11,6 +11,7 @@ from pyramid.interfaces import ITemplateRenderer
 from pyramid.decorator import reify
 from pyramid.i18n import TranslationString
 from pyramid.i18n import get_localizer
+from pyramid.threadlocal import get_current_registry
 from pyramid.threadlocal import get_current_request
 from genshi.template import TemplateLoader
 from genshi.filters import Translator
@@ -72,11 +73,11 @@ class GenshiTemplateRenderer(object):
         self.path = path
         self.lookup = lookup
         
-        # XXX: This is dirty, the IChameleonLookup doesn't provide this
-        # attribute, but the implement ChameleonRendererLookup
-        # unfortunately, the API is not perfect, we need to do this little 
-        # hack
-        self.settings = lookup.registry.settings
+        # XXX: This is dirty
+        self.settings = {}
+        registry = get_current_registry()
+        if registry is not None:
+            self.settings = registry.settings
         self.default_domain = self.settings.get('genshi.default_domain')
         
         # the i18n is available
@@ -85,12 +86,20 @@ class GenshiTemplateRenderer(object):
             # but this is how Pyramid does - getting request from local thread
             # IChameleonLookup doesn't provide pluralize there, so we need to
             # get by it ourself
-            request = get_current_request()
-            localizer = get_localizer(request)
+            pluralize = None
+            if hasattr(lookup, 'pluralize'):
+                # pluralize should be added to the lookup, but it is not there
+                # see will it be there in the future
+                # this is mainly for test right now
+                pluralize = lookup.pluralize
+            else:
+                request = get_current_request()
+                if request is not None:
+                    pluralize = get_localizer(request).pluralize
             
             self.adaptor = TranslationStringAdaptor(
                 lookup.translate, 
-                localizer.pluralize,
+                pluralize,
                 default_domain=self.default_domain
             )
             self._translator = Translator(self.adaptor)
@@ -100,7 +109,7 @@ class GenshiTemplateRenderer(object):
             
         # TODO: handle auto reload here
         self._loader = TemplateLoader(callback=self._tmpl_loaded)
-        self._tmpl = self.loader.load(self.path)
+        self._tmpl = self.loader.load(os.path.abspath(self.path))
                 
     def translate(self, *args, **kwargs):
         kwargs.setdefault('domain', self.default_domain)
@@ -149,7 +158,7 @@ class GenshiTemplateRenderer(object):
         
     # implement ITemplateRenderer interface
     
-    def implement(self):
+    def implementation(self):
         return self.render
     
     def __call__(self, value, system):

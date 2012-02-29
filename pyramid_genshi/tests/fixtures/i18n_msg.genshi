@@ -1,0 +1,4 @@
+<div xmlns="http://www.w3.org/1999/xhtml"
+     xmlns:py="http://genshi.edgewall.org/"
+     xmlns:i18n="http://genshi.edgewall.org/i18n"
+>${ _('Hello') } World</div>
