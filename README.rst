@@ -16,11 +16,24 @@ And you can use it as you use other template::
     def home(request):
         return 'Hello world'
         
-To adjust output format, you can change `genshi.method` in settings. ::
+Settings
+--------
+        
+To adjust output format, you can change `genshi.default_format` ::
 
-    genshi.method = xhtml
+    genshi.default_format = xhtml
     
-To adjust the default i18n domain, you can change `genshi.default_domain` in 
-settings. ::
+To adjust output encoding, you can change `genshi.default_encoding` ::
+
+    genshi.default_encoding = cp950
+    
+To adjust output doctype, you can change `genshi.default_doctype` ::
+
+    genshi.default_doctype = html5
+   
+To adjust the default i18n domain, you can change `genshi.default_domain` ::
 
     genshi.default_domain = my_domain
+    
+For available options, you can reference to 
+`<http://genshi.edgewall.org/wiki/Documentation/0.6.x/plugin.html>`_
