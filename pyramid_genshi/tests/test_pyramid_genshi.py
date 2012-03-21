@@ -70,6 +70,25 @@ class GenshiTemplateRendererTests(unittest.TestCase):
         test_method('text', 
                     '\n')
         
+    def test_render_doctype(self):
+        lookup = DummyLookup()
+        path = self._get_template_path('minimal.genshi')
+        
+        def test_doctype(doctype, expected):
+            from pyramid.threadlocal import get_current_registry
+            reg = get_current_registry()
+            reg.settings['genshi.default_doctype'] = doctype
+            renderer = self.make_one(path, lookup)
+            result = renderer({}, {})
+            self.assertEqual(result, expected)
+            
+        test_doctype('html5', 
+                    '<!DOCTYPE html>\n<div>\n</div>')
+        test_doctype('xhtml', 
+                    '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"' \
+                    ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n' \
+                    '<div>\n</div>')
+        
     def test_i18n_msg(self):
         lookup = DummyLookup()
         def translate(msg):

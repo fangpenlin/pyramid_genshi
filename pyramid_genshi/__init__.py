@@ -153,7 +153,11 @@ class GenshiTemplateRenderer(object):
         values.setdefault('_', self.translate)
         stream = self.template.generate(**values)
         method = self.settings.get('genshi.method', 'html')
-        body = stream.render(method=method)
+        kwargs = dict(method=method)
+        doctype = self.settings.get('genshi.default_doctype', None)
+        if doctype is not None:
+            kwargs['doctype'] = doctype
+        body = stream.render(**kwargs)
         return body
         
     # implement ITemplateRenderer interface
