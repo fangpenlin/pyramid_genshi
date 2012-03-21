@@ -70,6 +70,21 @@ class GenshiTemplateRendererTests(unittest.TestCase):
         test_method('text', 
                     '\n')
         
+        def test_format(method, expected):
+            from pyramid.threadlocal import get_current_registry
+            reg = get_current_registry()
+            reg.settings['genshi.default_format'] = method
+            renderer = self.make_one(path, lookup)
+            result = renderer({}, {})
+            self.assertEqual(result, expected)
+            
+        test_format('xml', 
+                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
+        test_format('xhtml', 
+                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
+        test_format('text', 
+                    '\n')
+        
     def test_render_doctype(self):
         lookup = DummyLookup()
         path = self._get_template_path('minimal.genshi')
@@ -88,6 +103,23 @@ class GenshiTemplateRendererTests(unittest.TestCase):
                     '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"' \
                     ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n' \
                     '<div>\n</div>')
+        
+    def test_render_encoding(self):
+        lookup = DummyLookup()
+        path = self._get_template_path('chinese.genshi')
+        
+        def test_encoding(encoding, expected):
+            from pyramid.threadlocal import get_current_registry
+            reg = get_current_registry()
+            reg.settings['genshi.default_encoding'] = encoding
+            renderer = self.make_one(path, lookup)
+            result = renderer({}, {})
+            self.assertEqual(result, expected)
+            
+        test_encoding('utf8', 
+                    '<div>\n\xe4\xb8\xad\xe6\x96\x87\xe5\xad\x97\n</div>')
+        test_encoding('cp950', 
+                    '<div>\n\xa4\xa4\xa4\xe5\xa6r\n</div>')
         
     def test_i18n_msg(self):
         lookup = DummyLookup()
