@@ -110,7 +110,6 @@ class GenshiTemplateRenderer(object):
         auto_reload = self.settings.get('genshi.auto_reload', True)
         self._loader = TemplateLoader(callback=self._tmpl_loaded, 
                                       auto_reload=auto_reload)
-        self._tmpl = self.loader.load(os.path.abspath(self.path))
                 
     def translate(self, *args, **kwargs):
         kwargs.setdefault('domain', self.default_domain)
@@ -145,7 +144,8 @@ class GenshiTemplateRenderer(object):
         """Loaded Genshi Template
         
         """
-        return self._tmpl
+        tmpl = self.loader.load(os.path.abspath(self.path))
+        return tmpl
     
     def render(self, **values):
         """Render template with values
