@@ -35,5 +35,9 @@ To adjust the default i18n domain, you can change `genshi.default_domain` ::
 
     genshi.default_domain = my_domain
     
+To adjust template auto reloading, you can change `genshi.auto_reload` ::
+
+    genshi.auto_reload = False
+    
 For available options, you can reference to 
 `<http://genshi.edgewall.org/wiki/Documentation/0.6.x/plugin.html>`_

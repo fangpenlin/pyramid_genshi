@@ -1,3 +1,8 @@
+0.1.2
+-----
+
+- Add genshi.auto_reload setting option
+
 0.1.1
 -----
 
