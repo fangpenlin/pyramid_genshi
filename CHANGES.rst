@@ -1,7 +1,7 @@
 0.1.2
 -----
 
-- Add genshi.auto_reload setting option
+- Add genshi.auto_reload setting option, and make the default value as True
 
 0.1.1
 -----
