@@ -106,9 +106,10 @@ class GenshiTemplateRenderer(object):
         # no i18n available, just use translator with NullTranslations
         else:
             self._translator = Translator()
-            
-        # TODO: handle auto reload here
-        self._loader = TemplateLoader(callback=self._tmpl_loaded)
+        
+        auto_reload = self.settings.get('genshi.auto_reload', True)
+        self._loader = TemplateLoader(callback=self._tmpl_loaded, 
+                                      auto_reload=auto_reload)
         self._tmpl = self.loader.load(os.path.abspath(self.path))
                 
     def translate(self, *args, **kwargs):
