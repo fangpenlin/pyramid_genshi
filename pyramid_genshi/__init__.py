@@ -1,20 +1,17 @@
 import os
 import logging
-import types
 import gettext
-import locale
 
-import pkg_resources
 from zope.interface import implements
 from pyramid import renderers
 from pyramid.interfaces import ITemplateRenderer
-from pyramid.decorator import reify
 from pyramid.i18n import TranslationString
 from pyramid.i18n import get_localizer
 from pyramid.threadlocal import get_current_registry
 from pyramid.threadlocal import get_current_request
 from genshi.template import TemplateLoader
 from genshi.filters import Translator
+
 
 class TranslationStringAdaptor(gettext.NullTranslations):
     """An adaptor provide gettext Translation interface for Genshi i18n filter, 
@@ -62,9 +59,11 @@ class TranslationStringAdaptor(gettext.NullTranslations):
     def dungettext(self, domain, msgid1, msgid2, n):
         return self.ungettext(msgid1, msgid2, n, domain)
     
+
 def renderer_factory(path):
     return renderers.template_renderer_factory(path, GenshiTemplateRenderer)
         
+
 class GenshiTemplateRenderer(object):
     implements(ITemplateRenderer)
     
@@ -137,8 +136,7 @@ class GenshiTemplateRenderer(object):
         
         """
         return self._translator
-    
-    #@reify # avoid looking up reload_templates before manager pushed
+
     @property
     def template(self):
         """Loaded Genshi Template
@@ -175,6 +173,7 @@ class GenshiTemplateRenderer(object):
             raise ValueError('renderer was passed non-dictionary as value')
         result = self.render(**system)
         return result
+
 
 def includeme(config):
     config.add_renderer('.genshi', renderer_factory)
