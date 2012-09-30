@@ -68,7 +68,7 @@ def renderer_factory(path):
 class GenshiTemplateRenderer(object):
     implements(ITemplateRenderer)
     
-    def __init__(self, path, lookup, logger=None):
+    def __init__(self, path, lookup, macro=None, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.path = path
         self.lookup = lookup

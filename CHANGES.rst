@@ -1,3 +1,8 @@
+0.1.3
+-----
+
+- Fix issue caused by Pyramid 1.4 macro argument to the template renderer
+
 0.1.2
 -----
 
