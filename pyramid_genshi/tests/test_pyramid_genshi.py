@@ -136,10 +136,12 @@ class GenshiTemplateRendererTests(unittest.TestCase):
         
     def test_i18n_msg(self):
         lookup = DummyLookup()
+
         def translate(msg):
             if msg == 'Hello':
                 return 'Hola'
             return msg
+
         lookup.translate = translate
         path = self._get_template_path('i18n_msg.genshi')
         renderer = self.make_one(path, lookup)
