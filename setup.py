@@ -37,7 +37,7 @@ setup(
     keywords='bfg pyramid pylons genshi templates',
     author="Victor Lin",
     author_email="bornstub@gmail.com",
-    url="https://bitbucket.org/victorlin/pyramid_genshi",
+    url="https://github.com/victorlin/pyramid_genshi",
     license="MIT",
     version=version,
     packages=find_packages(),
