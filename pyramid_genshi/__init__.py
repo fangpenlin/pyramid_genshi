@@ -60,8 +60,10 @@ class TranslationStringAdaptor(gettext.NullTranslations):
         return self.ungettext(msgid1, msgid2, n, domain)
     
 
-def renderer_factory(path):
-    return renderers.template_renderer_factory(path, GenshiTemplateRenderer)
+def renderer_factory(info):
+    # TODO: this is an internal API? maybe we should use a better way
+    # to deal with it
+    return renderers.template_renderer_factory(info, GenshiTemplateRenderer)
         
 
 class GenshiTemplateRenderer(object):

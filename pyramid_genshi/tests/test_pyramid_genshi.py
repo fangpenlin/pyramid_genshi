@@ -1,5 +1,7 @@
 import unittest
 
+from flexmock import flexmock
+
 
 class DummyLookup(object):
     auto_reload = True
@@ -9,7 +11,7 @@ class DummyLookup(object):
         return msg
 
 
-class GenshiTemplateRendererTests(unittest.TestCase):
+class TestGenshiTemplateRenderer(unittest.TestCase):
     def setUp(self):
         from pyramid.testing import setUp
         from pyramid.registry import Registry
@@ -25,16 +27,6 @@ class GenshiTemplateRendererTests(unittest.TestCase):
         here = os.path.abspath(os.path.dirname(__file__))
         return os.path.join(here, 'fixtures', name)
         
-    def _register_utility(self, utility, iface, name=''):
-        from pyramid.threadlocal import get_current_registry
-        reg = get_current_registry()
-        reg.registerUtility(utility, iface, name=name)
-        return reg
-
-    def _register_renderer(self):
-        from pyramid_chameleon_genshi import renderer_factory
-        self.config.add_renderer('.genshi', renderer_factory)
-    
     def make_one(self, *arg, **kw):
         from pyramid_genshi import GenshiTemplateRenderer
         return GenshiTemplateRenderer(*arg, **kw)
@@ -189,3 +181,182 @@ class GenshiTemplateRendererTests(unittest.TestCase):
         renderer({}, {})
         ts = translated_calls[0]
         self.assertEqual(ts.domain, 'test_domain')
+
+    def test_implementation_method(self):
+        lookup = DummyLookup()
+        path = self._get_template_path('minimal.genshi')
+        renderer = self.make_one(path, lookup)
+        self.assertEqual(renderer.implementation(), renderer.render)
+
+    def test_render_with_wrong_argument(self):
+        lookup = DummyLookup()
+        path = self._get_template_path('minimal.genshi')
+        renderer = self.make_one(path, lookup)
+        with self.assertRaises(ValueError):
+            renderer(None, {})
+
+    def test_translator(self):
+        from genshi.filters import Translator 
+        lookup = DummyLookup()
+        path = self._get_template_path('minimal.genshi')
+        renderer = self.make_one(path, lookup)
+        self.assertIsInstance(renderer.translator, Translator)
+
+    def test_includeme(self):
+        from pyramid_genshi import includeme
+        from pyramid_genshi import renderer_factory
+
+        mock_config = (
+            flexmock()
+            .should_receive('add_renderer')
+            .with_args('.genshi', renderer_factory)
+            .once()
+            .mock()
+        )
+        includeme(mock_config)
+
+    def test_default_translate(self):
+        from pyramid.i18n import TranslationString
+        lookup = DummyLookup()
+        lookup.translate = None
+        path = self._get_template_path('minimal.genshi')
+        renderer = self.make_one(path, lookup)
+        ts = renderer.translate('hello')
+        self.assertIsInstance(ts, TranslationString)
+        self.assertEqual(ts, TranslationString('hello'))
+
+    def test_lookup_with_pluralize(self):
+
+        def mock_pluralize(): 
+            pass
+
+        mock_pluralize()
+
+        lookup = DummyLookup()
+        lookup.pluralize = mock_pluralize
+        path = self._get_template_path('minimal.genshi')
+        renderer = self.make_one(path, lookup)
+        self.assertEqual(renderer.adaptor.pluralize, mock_pluralize)
+
+    def test_lookup_with_request_pluralize(self):
+        from pyramid.threadlocal import manager
+        from pyramid.threadlocal import defaults
+        from pyramid.testing import DummyRequest
+        from pyramid.i18n import get_localizer
+
+        request = DummyRequest()
+        localizer = get_localizer(request)
+
+        info = defaults()
+        info['request'] = request
+        info['registry'].settings = {}
+        manager.push(info)
+
+        lookup = DummyLookup()
+        path = self._get_template_path('minimal.genshi')
+        renderer = self.make_one(path, lookup)
+        self.assertEqual(renderer.adaptor.pluralize, localizer.pluralize)
+
+    def test_renderer_factory(self):
+        from pyramid_genshi import renderer_factory
+        from pyramid_genshi import GenshiTemplateRenderer
+        from pyramid.renderers import RendererHelper
+        path = self._get_template_path('minimal.genshi')
+        info = RendererHelper(path)
+        render = renderer_factory(info)
+        self.assertEqual(render.path, path)
+        self.assertIsInstance(render, GenshiTemplateRenderer)
+
+
+class TestTranslationStringAdaptor(unittest.TestCase):
+    def make_one(self, *args, **kwargs):
+        from pyramid_genshi import TranslationStringAdaptor
+        return TranslationStringAdaptor(*args, **kwargs)
+
+    def test_ugettext(self):
+        translate_calls = []
+
+        def mock_translate(ts):
+            translate_calls.append(ts)
+
+        adaptor = self.make_one(mock_translate, 
+                                default_domain='MOCK_DEFAULT_DOMAIN')
+        adaptor.ugettext('hello baby')
+
+        self.assertEqual(len(translate_calls), 1)
+        ts = translate_calls[0]
+        self.assertEqual(ts.domain, 'MOCK_DEFAULT_DOMAIN')
+
+    def test_ugettext_with_domain(self):
+        translate_calls = []
+
+        def mock_translate(ts):
+            translate_calls.append(ts)
+
+        adaptor = self.make_one(mock_translate)
+        adaptor.ugettext('hello baby', domain='MOCK_DOMAIN')
+
+        self.assertEqual(len(translate_calls), 1)
+        ts = translate_calls[0]
+        self.assertEqual(ts.domain, 'MOCK_DOMAIN')
+
+    def test_dugettext_with_domain(self):
+        translate_calls = []
+
+        def mock_translate(ts):
+            translate_calls.append(ts)
+
+        adaptor = self.make_one(mock_translate)
+        adaptor.dugettext('MOCK_DOMAIN', 'hello baby')
+
+        self.assertEqual(len(translate_calls), 1)
+        ts = translate_calls[0]
+        self.assertEqual(ts.domain, 'MOCK_DOMAIN')
+
+    def test_ungettext(self):
+        pluralize_calls = []
+
+        def mock_pluralize(msgid1, msgid2, n, domain):
+            pluralize_calls.append((msgid1, msgid2, n, domain))
+
+        adaptor = self.make_one(lambda ts: ts, 
+                                pluralize=mock_pluralize, 
+                                default_domain='MOCK_DEFAULT_DOMAIN')
+        adaptor.ungettext('hello one baby', 'hello many babies', 5566)
+
+        self.assertEqual(len(pluralize_calls), 1)
+        msgid1, msgid2, n, domain = pluralize_calls[0]
+        self.assertEqual(msgid1, 'hello one baby')
+        self.assertEqual(msgid2, 'hello many babies')
+        self.assertEqual(n, 5566)
+        self.assertEqual(domain, 'MOCK_DEFAULT_DOMAIN')
+
+    def test_ungettext_without_pluralize(self):
+        adaptor = self.make_one(lambda ts: ts, 
+                                default_domain='MOCK_DEFAULT_DOMAIN')
+        ts = adaptor.ungettext('hello one baby', 'hello many babies', 5566)
+        self.assertEqual(ts, 'hello many babies')
+        ts = adaptor.ungettext('hello one baby', 'hello many babies', 1)
+        self.assertEqual(ts, 'hello one baby')
+
+    def test_dungettext(self):
+        pluralize_calls = []
+
+        def mock_pluralize(msgid1, msgid2, n, domain):
+            pluralize_calls.append((msgid1, msgid2, n, domain))
+
+        adaptor = self.make_one(lambda ts: ts, 
+                                pluralize=mock_pluralize)
+        adaptor.dungettext(
+            'MOCK_DOMAIN', 
+            'hello one baby', 
+            'hello many babies', 
+            5566,
+        )
+
+        self.assertEqual(len(pluralize_calls), 1)
+        msgid1, msgid2, n, domain = pluralize_calls[0]
+        self.assertEqual(msgid1, 'hello one baby')
+        self.assertEqual(msgid2, 'hello many babies')
+        self.assertEqual(n, 5566)
+        self.assertEqual(domain, 'MOCK_DOMAIN')
