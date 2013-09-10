@@ -13,17 +13,22 @@ except:
     README = ''
     CHANGES = ''
 
-version = '0.1.3'
 
-requires = [
-    'Genshi',
-    'Pyramid'
-]
+def read_requirements(filename):
+    content = open(os.path.join(here, filename)).read()
+    requirements = map(lambda r: r.strip(), content.splitlines())
+    return requirements
+
+
+requirements = read_requirements('requirements.txt')
+test_requirements = read_requirements('test_requirements.txt')
+
+version = '0.1.3'
 
 setup(
     name='pyramid_genshi',
     description='Genshi template bindings for the Pyramid web framework',
-    long_description=README + '\n\n' +  CHANGES,
+    long_description=README + '\n\n' + CHANGES,
     classifiers=[
         "Intended Audience :: Developers",
         "Programming Language :: Python",
@@ -39,6 +44,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     test_suite="pyramid_genshi.tests",
-    install_requires=requires,
-    test_requires=requires, 
+    install_requires=requirements,
+    test_requires=test_requirements, 
 )

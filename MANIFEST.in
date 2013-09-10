@@ -1,2 +1,4 @@
 include distribute_setup.py
+include requirements.txt
+include test_requirements.txt
 recursive-include pyramid_genshi *.genshi

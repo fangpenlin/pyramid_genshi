@@ -1,10 +1,13 @@
 import unittest
 
+
 class DummyLookup(object):
-    auto_reload=True
+    auto_reload = True
     debug = True
+
     def translate(self, msg):
         return msg
+
 
 class GenshiTemplateRendererTests(unittest.TestCase):
     def setUp(self):
@@ -63,12 +66,18 @@ class GenshiTemplateRendererTests(unittest.TestCase):
             result = renderer({}, {})
             self.assertEqual(result, expected)
             
-        test_method('xml', 
-                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
-        test_method('xhtml', 
-                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
-        test_method('text', 
-                    '\n')
+        test_method(
+            'xml', 
+            '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>'
+        )
+        test_method(
+            'xhtml', 
+            '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>'
+        )
+        test_method(
+            'text', 
+            '\n'
+        )
         
         def test_format(method, expected):
             from pyramid.threadlocal import get_current_registry
@@ -97,12 +106,16 @@ class GenshiTemplateRendererTests(unittest.TestCase):
             result = renderer({}, {})
             self.assertEqual(result, expected)
             
-        test_doctype('html5', 
-                    '<!DOCTYPE html>\n<div>\n</div>')
-        test_doctype('xhtml', 
-                    '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"' \
-                    ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n' \
-                    '<div>\n</div>')
+        test_doctype(
+            'html5', 
+            '<!DOCTYPE html>\n<div>\n</div>'
+        )
+        test_doctype(
+            'xhtml', 
+            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"'
+            ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n'
+            '<div>\n</div>'
+        )
         
     def test_render_encoding(self):
         lookup = DummyLookup()
@@ -117,9 +130,9 @@ class GenshiTemplateRendererTests(unittest.TestCase):
             self.assertEqual(result, expected)
             
         test_encoding('utf8', 
-                    '<div>\n\xe4\xb8\xad\xe6\x96\x87\xe5\xad\x97\n</div>')
+                      '<div>\n\xe4\xb8\xad\xe6\x96\x87\xe5\xad\x97\n</div>')
         test_encoding('cp950', 
-                    '<div>\n\xa4\xa4\xa4\xe5\xa6r\n</div>')
+                      '<div>\n\xa4\xa4\xa4\xe5\xa6r\n</div>')
         
     def test_i18n_msg(self):
         lookup = DummyLookup()
@@ -140,9 +153,11 @@ class GenshiTemplateRendererTests(unittest.TestCase):
         reg.settings['genshi.default_domain'] = 'test_domain'
         lookup = DummyLookup()
         translate_calls = []
+
         def translate(msg):
             translate_calls.append(msg)
             return msg
+
         lookup.translate = translate
         
         path = self._get_template_path('i18n_msg.genshi')
@@ -159,12 +174,13 @@ class GenshiTemplateRendererTests(unittest.TestCase):
         reg = get_current_registry()
         reg.settings['genshi.default_domain'] = 'my_domain'
         
-        from translationstring import Translator
         translated_calls = []
         lookup = DummyLookup()
+
         def translate(msg):
             translated_calls.append(msg)
             return msg
+
         lookup.translate = translate
         path = self._get_template_path('i18n_domain.genshi')
         renderer = self.make_one(path, lookup)
