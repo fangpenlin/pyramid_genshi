@@ -69,10 +69,11 @@ def renderer_factory(info):
 class GenshiTemplateRenderer(object):
     implements(ITemplateRenderer)
     
-    def __init__(self, path, lookup, macro=None, logger=None):
+    def __init__(self, path, lookup, macro=None, logger=None, template_class=None):
         self.logger = logger or logging.getLogger(__name__)
         self.path = path
         self.lookup = lookup
+        self.template_class = template_class
         
         # XXX: This is dirty
         self.settings = {}
@@ -144,7 +145,7 @@ class GenshiTemplateRenderer(object):
         """Loaded Genshi Template
         
         """
-        tmpl = self.loader.load(os.path.abspath(self.path))
+        tmpl = self.loader.load(os.path.abspath(self.path), cls=self.template_class)
         return tmpl
     
     def render(self, **values):

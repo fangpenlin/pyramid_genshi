@@ -1,4 +1,5 @@
 import unittest
+from genshi.template.text import NewTextTemplate
 
 from flexmock import flexmock
 
@@ -45,6 +46,14 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         result = renderer({}, {})
         self.assertEqual(result, 
                          '<div>\n</div>')
+
+    def test_text_render(self):
+        lookup = DummyLookup()
+        path = self._get_template_path('minimal.txt')
+        renderer = self.make_one(path, lookup, template_class=NewTextTemplate)
+        result = renderer({}, {})
+        self.assertEqual(result,
+                         'Hello, world.\n')
         
     def test_render_method(self):
         lookup = DummyLookup()
