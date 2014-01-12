@@ -1,7 +1,27 @@
+from __future__ import unicode_literals
+import os
 import unittest
-from genshi.template.text import NewTextTemplate
 
-from flexmock import flexmock
+import mock
+from zope.interface.verify import verifyObject
+from pyramid.interfaces import ITemplateRenderer
+from pyramid.testing import setUp
+from pyramid.testing import tearDown
+from pyramid.testing import DummyRequest
+from pyramid.registry import Registry
+from pyramid.threadlocal import get_current_registry
+from pyramid.threadlocal import manager
+from pyramid.threadlocal import defaults
+from pyramid.i18n import TranslationString
+from pyramid.i18n import get_localizer
+from pyramid.renderers import RendererHelper
+from genshi.template.text import NewTextTemplate
+from genshi.filters import Translator 
+
+from pyramid_genshi import includeme
+from pyramid_genshi import renderer_factory
+from pyramid_genshi import GenshiTemplateRenderer
+from pyramid_genshi import TranslationStringAdaptor
 
 
 class DummyLookup(object):
@@ -14,27 +34,20 @@ class DummyLookup(object):
 
 class TestGenshiTemplateRenderer(unittest.TestCase):
     def setUp(self):
-        from pyramid.testing import setUp
-        from pyramid.registry import Registry
         registry = Registry()
         self.config = setUp(registry=registry)
 
     def tearDown(self):
-        from pyramid.testing import tearDown
         tearDown()
         
     def _get_template_path(self, name):
-        import os
         here = os.path.abspath(os.path.dirname(__file__))
         return os.path.join(here, 'fixtures', name)
         
     def make_one(self, *arg, **kw):
-        from pyramid_genshi import GenshiTemplateRenderer
         return GenshiTemplateRenderer(*arg, **kw)
     
     def test_instance_implements_ITemplate(self):
-        from zope.interface.verify import verifyObject
-        from pyramid.interfaces import ITemplateRenderer
         path = self._get_template_path('minimal.genshi')
         lookup = DummyLookup()
         verifyObject(ITemplateRenderer, self.make_one(path, lookup))
@@ -44,23 +57,20 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         path = self._get_template_path('minimal.genshi')
         renderer = self.make_one(path, lookup)
         result = renderer({}, {})
-        self.assertEqual(result, 
-                         '<div>\n</div>')
+        self.assertEqual(result, '<div>\n</div>')
 
     def test_text_render(self):
         lookup = DummyLookup()
         path = self._get_template_path('minimal.txt')
         renderer = self.make_one(path, lookup, template_class=NewTextTemplate)
         result = renderer({}, {})
-        self.assertEqual(result,
-                         'Hello, world.\n')
+        self.assertEqual(result.strip(), 'Hello, world.')
         
     def test_render_method(self):
         lookup = DummyLookup()
         path = self._get_template_path('minimal.genshi')
         
         def test_method(method, expected):
-            from pyramid.threadlocal import get_current_registry
             reg = get_current_registry()
             reg.settings['genshi.method'] = method
             renderer = self.make_one(path, lookup)
@@ -81,7 +91,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         )
         
         def test_format(method, expected):
-            from pyramid.threadlocal import get_current_registry
             reg = get_current_registry()
             reg.settings['genshi.default_format'] = method
             renderer = self.make_one(path, lookup)
@@ -100,7 +109,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         path = self._get_template_path('minimal.genshi')
         
         def test_doctype(doctype, expected):
-            from pyramid.threadlocal import get_current_registry
             reg = get_current_registry()
             reg.settings['genshi.default_doctype'] = doctype
             renderer = self.make_one(path, lookup)
@@ -123,7 +131,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         path = self._get_template_path('chinese.genshi')
         
         def test_encoding(encoding, expected):
-            from pyramid.threadlocal import get_current_registry
             reg = get_current_registry()
             reg.settings['genshi.default_encoding'] = encoding
             renderer = self.make_one(path, lookup)
@@ -131,9 +138,9 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
             self.assertEqual(result, expected)
             
         test_encoding('utf8', 
-                      '<div>\n\xe4\xb8\xad\xe6\x96\x87\xe5\xad\x97\n</div>')
+                      b'<div>\n\xe4\xb8\xad\xe6\x96\x87\xe5\xad\x97\n</div>')
         test_encoding('cp950', 
-                      '<div>\n\xa4\xa4\xa4\xe5\xa6r\n</div>')
+                      b'<div>\n\xa4\xa4\xa4\xe5\xa6r\n</div>')
         
     def test_i18n_msg(self):
         lookup = DummyLookup()
@@ -151,7 +158,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
                          '<div>Hola World</div>')
         
     def test_default_domain(self):
-        from pyramid.threadlocal import get_current_registry
         reg = get_current_registry()
         reg.settings['genshi.default_domain'] = 'test_domain'
         lookup = DummyLookup()
@@ -173,7 +179,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         self.assertEqual(ts2.domain, 'test_domain')
         
     def test_i18n_domain(self):
-        from pyramid.threadlocal import get_current_registry
         reg = get_current_registry()
         reg.settings['genshi.default_domain'] = 'my_domain'
         
@@ -205,27 +210,19 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
             renderer(None, {})
 
     def test_translator(self):
-        from genshi.filters import Translator 
         lookup = DummyLookup()
         path = self._get_template_path('minimal.genshi')
         renderer = self.make_one(path, lookup)
         self.assertIsInstance(renderer.translator, Translator)
 
     def test_includeme(self):
-        from pyramid_genshi import includeme
-        from pyramid_genshi import renderer_factory
-
-        mock_config = (
-            flexmock()
-            .should_receive('add_renderer')
-            .with_args('.genshi', renderer_factory)
-            .once()
-            .mock()
-        )
+        mock_config = mock.Mock()
         includeme(mock_config)
+        mock_config.add_renderer.assert_called_once_with(
+            '.genshi', renderer_factory
+        )
 
     def test_default_translate(self):
-        from pyramid.i18n import TranslationString
         lookup = DummyLookup()
         lookup.translate = None
         path = self._get_template_path('minimal.genshi')
@@ -248,11 +245,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         self.assertEqual(renderer.adaptor.pluralize, mock_pluralize)
 
     def test_lookup_with_request_pluralize(self):
-        from pyramid.threadlocal import manager
-        from pyramid.threadlocal import defaults
-        from pyramid.testing import DummyRequest
-        from pyramid.i18n import get_localizer
-
         request = DummyRequest()
         localizer = get_localizer(request)
 
@@ -267,9 +259,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         self.assertEqual(renderer.adaptor.pluralize, localizer.pluralize)
 
     def test_renderer_factory(self):
-        from pyramid_genshi import renderer_factory
-        from pyramid_genshi import GenshiTemplateRenderer
-        from pyramid.renderers import RendererHelper
         path = self._get_template_path('minimal.genshi')
         info = RendererHelper(path)
         render = renderer_factory(info)
@@ -279,7 +268,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
 
 class TestTranslationStringAdaptor(unittest.TestCase):
     def make_one(self, *args, **kwargs):
-        from pyramid_genshi import TranslationStringAdaptor
         return TranslationStringAdaptor(*args, **kwargs)
 
     def test_ugettext(self):

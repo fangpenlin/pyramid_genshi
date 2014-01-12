@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import os
 import logging
 import gettext
@@ -14,9 +15,9 @@ from genshi.filters import Translator
 
 
 class TranslationStringAdaptor(gettext.NullTranslations):
-    """An adaptor provide gettext Translation interface for Genshi i18n filter, 
+    """An adaptor provides gettext Translation interface for Genshi i18n filter, 
     it converts gettext function calls to TranslationString as argument to 
-    under-layer translate and pluralize functions
+    underlying translate and pluralize functions
     
     """
     
@@ -69,7 +70,14 @@ def renderer_factory(info):
 class GenshiTemplateRenderer(object):
     implements(ITemplateRenderer)
     
-    def __init__(self, path, lookup, macro=None, logger=None, template_class=None):
+    def __init__(
+        self, 
+        path, 
+        lookup, 
+        macro=None, 
+        logger=None, 
+        template_class=None,
+    ):
         self.logger = logger or logging.getLogger(__name__)
         self.path = path
         self.lookup = lookup
@@ -145,7 +153,10 @@ class GenshiTemplateRenderer(object):
         """Loaded Genshi Template
         
         """
-        tmpl = self.loader.load(os.path.abspath(self.path), cls=self.template_class)
+        tmpl = self.loader.load(
+            os.path.abspath(self.path), 
+            cls=self.template_class,
+        )
         return tmpl
     
     def render(self, **values):
@@ -165,7 +176,6 @@ class GenshiTemplateRenderer(object):
         return body
         
     # implement ITemplateRenderer interface
-    
     def implementation(self):
         return self.render
     

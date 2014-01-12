@@ -1,3 +1,2 @@
 Genshi
 Pyramid
-flexmock
