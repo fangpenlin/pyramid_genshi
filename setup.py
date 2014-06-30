@@ -13,6 +13,11 @@ except:
     README = ''
     CHANGES = ''
 
+tests_require = [
+    'nose',
+    'nose-cov',
+    'mock',
+]
 
 version = '0.1.4'
 
@@ -34,14 +39,13 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    test_suite="pyramid_genshi.tests",
+    test_suite="tests",
     install_requires=[
         'Genshi',
         'Pyramid',
     ],
-    test_requires=[
-        'nose',
-        'nose-cov',
-        'mock',
-    ],
+    extras_require=dict(
+        tests=tests_require,
+    ),
+    test_requires=tests_require,
 )
