@@ -9,6 +9,7 @@ env:
   - PYRAMID_VERSION="pyramid>=1.5,<1.6"
 # command to install dependencies
 install: 
+  - "easy_install -U setuptools"
   - "pip install flake8 --use-mirrors"
   - "pip install $PYRAMID_VERSION"
   - "pip install -e .[tests]"
