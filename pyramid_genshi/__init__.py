@@ -6,23 +6,23 @@ import gettext
 from zope.interface import implements
 from pyramid import renderers
 from pyramid.interfaces import ITemplateRenderer
+from pyramid.settings import asbool
+from pyramid.path import AssetResolver
 from pyramid.i18n import TranslationString
 from pyramid.i18n import get_localizer
-from pyramid.threadlocal import get_current_registry
-from pyramid.threadlocal import get_current_request
 from genshi.template import TemplateLoader
 from genshi.filters import Translator
 
 
 class TranslationStringAdaptor(gettext.NullTranslations):
-    """An adaptor provides gettext Translation interface for Genshi i18n filter, 
-    it converts gettext function calls to TranslationString as argument to 
+    """An adaptor provides gettext Translation interface for Genshi i18n filter,
+    it converts gettext function calls to TranslationString as argument to
     underlying translate and pluralize functions
     
     """
     
     def __init__(self, translate, pluralize=None, default_domain=None):
-        """translate is the function to be called with a TranslationString 
+        """translate is the function to be called with a TranslationString
         argument and return translated string
         
         pluralize is a function to be called with arguments
@@ -59,39 +59,40 @@ class TranslationStringAdaptor(gettext.NullTranslations):
         
     def dungettext(self, domain, msgid1, msgid2, n):
         return self.ungettext(msgid1, msgid2, n, domain)
-    
 
-def renderer_factory(info):
-    # TODO: this is an internal API? maybe we should use a better way
-    # to deal with it
-    return renderers.template_renderer_factory(info, GenshiTemplateRenderer)
-        
+
+class GenshiTemplateRendererFactory(object):
+    def __call__(self, info):
+        resolver = AssetResolver(info.package)
+        tmpl_path = resolver.resolve(info.name).abspath()
+        return GenshiTemplateRenderer(tmpl_path, info.settings)
+
 
 class GenshiTemplateRenderer(object):
-    implements(ITemplateRenderer)
     
     def __init__(
-        self, 
-        path, 
-        lookup, 
-        macro=None, 
-        logger=None, 
+        self,
+        path,
+        settings,
+        logger=None,
         template_class=None,
     ):
         self.logger = logger or logging.getLogger(__name__)
         self.path = path
-        self.lookup = lookup
+        self.settings = settings
+        # self.lookup = lookup
         self.template_class = template_class
         
-        # XXX: This is dirty
-        self.settings = {}
-        registry = get_current_registry()
-        if registry is not None:
-            self.settings = registry.settings
         self.default_domain = self.settings.get('genshi.default_domain')
-        
+        auto_reload = asbool(self.settings.get('genshi.auto_reload', True))
+        self._loader = TemplateLoader(
+            callback=self._tmpl_loaded,
+            auto_reload=auto_reload,
+        )
+        # TODO: handle i18n here
+
         # the i18n is available
-        if lookup.translate is not None:
+        if 0:
             # XXX: This is a very dirty hack, too
             # but this is how Pyramid does - getting request from local thread
             # IChameleonLookup doesn't provide pluralize there, so we need to
@@ -108,7 +109,7 @@ class GenshiTemplateRenderer(object):
                     pluralize = get_localizer(request).pluralize
             
             self.adaptor = TranslationStringAdaptor(
-                lookup.translate, 
+                lookup.translate,
                 pluralize,
                 default_domain=self.default_domain
             )
@@ -116,10 +117,6 @@ class GenshiTemplateRenderer(object):
         # no i18n available, just use translator with NullTranslations
         else:
             self._translator = Translator()
-        
-        auto_reload = self.settings.get('genshi.auto_reload', True)
-        self._loader = TemplateLoader(callback=self._tmpl_loaded, 
-                                      auto_reload=auto_reload)
                 
     def translate(self, *args, **kwargs):
         kwargs.setdefault('domain', self.default_domain)
@@ -154,7 +151,7 @@ class GenshiTemplateRenderer(object):
         
         """
         tmpl = self.loader.load(
-            os.path.abspath(self.path), 
+            os.path.abspath(self.path),
             cls=self.template_class,
         )
         return tmpl
@@ -189,4 +186,5 @@ class GenshiTemplateRenderer(object):
 
 
 def includeme(config):
+    renderer_factory = GenshiTemplateRendererFactory()
     config.add_renderer('.genshi', renderer_factory)

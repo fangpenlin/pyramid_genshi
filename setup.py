@@ -17,6 +17,7 @@ tests_require = [
     'nose',
     'nose-cov',
     'mock',
+    'webtest',
 ]
 
 version = '0.1.4'

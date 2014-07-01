@@ -16,10 +16,10 @@ from pyramid.i18n import TranslationString
 from pyramid.i18n import get_localizer
 from pyramid.renderers import RendererHelper
 from genshi.template.text import NewTextTemplate
-from genshi.filters import Translator 
+from genshi.filters import Translator
 
 from pyramid_genshi import includeme
-from pyramid_genshi import renderer_factory
+#from pyramid_genshi import renderer_factory
 from pyramid_genshi import GenshiTemplateRenderer
 from pyramid_genshi import TranslationStringAdaptor
 
