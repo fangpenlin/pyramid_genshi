@@ -83,11 +83,10 @@ class GenshiTemplateRenderer(object):
         
         self.default_domain = self.settings.get('genshi.default_domain')
         auto_reload = asbool(self.settings.get('genshi.auto_reload', True))
-        self._loader = TemplateLoader(
+        self.loader = TemplateLoader(
             callback=self._tmpl_loaded,
             auto_reload=auto_reload,
         )
-        # TODO: handle i18n here
 
         # should we enable i18n?
         i18n = asbool(self.settings.get('genshi.i18n', True))
@@ -97,10 +96,10 @@ class GenshiTemplateRenderer(object):
                 self.localizer.pluralize,
                 default_domain=self.default_domain
             )
-            self._translator = Translator(self.adaptor)
+            self.translator = Translator(self.adaptor)
         # no i18n available, just use translator with NullTranslations
         else:
-            self._translator = Translator()
+            self.translator = Translator()
 
     @property
     def localizer(self):
@@ -119,21 +118,7 @@ class GenshiTemplateRenderer(object):
         """Called when a template is loadded by loader
         
         """
-        self._translator.setup(tmpl)
-        
-    @property
-    def loader(self):
-        """Genshi template loader
-        
-        """
-        return self._loader
-        
-    @property
-    def translator(self):
-        """Genshi i18n translator filter
-        
-        """
-        return self._translator
+        self.translator.setup(tmpl)
 
     @property
     def template(self):
