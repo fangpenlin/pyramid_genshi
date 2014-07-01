@@ -66,66 +66,6 @@ class TestGenshiTemplateRenderer(unittest.TestCase):
         result = renderer({}, {})
         self.assertEqual(result.strip(), 'Hello, world.')
         
-    def test_render_method(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        
-        def test_method(method, expected):
-            reg = get_current_registry()
-            reg.settings['genshi.method'] = method
-            renderer = self.make_one(path, lookup)
-            result = renderer({}, {})
-            self.assertEqual(result, expected)
-            
-        test_method(
-            'xml', 
-            '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>'
-        )
-        test_method(
-            'xhtml', 
-            '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>'
-        )
-        test_method(
-            'text', 
-            '\n'
-        )
-        
-        def test_format(method, expected):
-            reg = get_current_registry()
-            reg.settings['genshi.default_format'] = method
-            renderer = self.make_one(path, lookup)
-            result = renderer({}, {})
-            self.assertEqual(result, expected)
-            
-        test_format('xml', 
-                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
-        test_format('xhtml', 
-                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
-        test_format('text', 
-                    '\n')
-        
-    def test_render_doctype(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        
-        def test_doctype(doctype, expected):
-            reg = get_current_registry()
-            reg.settings['genshi.default_doctype'] = doctype
-            renderer = self.make_one(path, lookup)
-            result = renderer({}, {})
-            self.assertEqual(result, expected)
-            
-        test_doctype(
-            'html5', 
-            '<!DOCTYPE html>\n<div>\n</div>'
-        )
-        test_doctype(
-            'xhtml', 
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"'
-            ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n'
-            '<div>\n</div>'
-        )
-        
     def test_render_encoding(self):
         lookup = DummyLookup()
         path = self._get_template_path('chinese.genshi')
