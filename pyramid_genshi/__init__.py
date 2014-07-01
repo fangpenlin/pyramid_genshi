@@ -3,15 +3,15 @@ import os
 import logging
 import gettext
 
-from zope.interface import implements
-from pyramid import renderers
-from pyramid.interfaces import ITemplateRenderer
 from pyramid.settings import asbool
 from pyramid.path import AssetResolver
 from pyramid.i18n import TranslationString
 from pyramid.i18n import get_localizer
+from pyramid.threadlocal import get_current_request
 from genshi.template import TemplateLoader
 from genshi.filters import Translator
+
+logger = logging.getLogger(__name__)
 
 
 class TranslationStringAdaptor(gettext.NullTranslations):
@@ -74,10 +74,8 @@ class GenshiTemplateRenderer(object):
         self,
         path,
         settings,
-        logger=None,
         template_class=None,
     ):
-        self.logger = logger or logging.getLogger(__name__)
         self.path = path
         self.settings = settings
         # self.lookup = lookup
@@ -91,38 +89,30 @@ class GenshiTemplateRenderer(object):
         )
         # TODO: handle i18n here
 
-        # the i18n is available
-        if 0:
-            # XXX: This is a very dirty hack, too
-            # but this is how Pyramid does - getting request from local thread
-            # IChameleonLookup doesn't provide pluralize there, so we need to
-            # get by it ourself
-            pluralize = None
-            if hasattr(lookup, 'pluralize'):
-                # pluralize should be added to the lookup, but it is not there
-                # see will it be there in the future
-                # this is mainly for test right now
-                pluralize = lookup.pluralize
-            else:
-                request = get_current_request()
-                if request is not None:
-                    pluralize = get_localizer(request).pluralize
-            
+        # should we enable i18n?
+        i18n = asbool(self.settings.get('genshi.i18n', True))
+        if i18n:
             self.adaptor = TranslationStringAdaptor(
-                lookup.translate,
-                pluralize,
+                self.localizer.translate,
+                self.localizer.pluralize,
                 default_domain=self.default_domain
             )
             self._translator = Translator(self.adaptor)
         # no i18n available, just use translator with NullTranslations
         else:
             self._translator = Translator()
+
+    @property
+    def localizer(self):
+        request = get_current_request()
+        localizer = get_localizer(request)
+        return localizer
                 
     def translate(self, *args, **kwargs):
         kwargs.setdefault('domain', self.default_domain)
         ts = TranslationString(*args, **kwargs)
-        if self.lookup.translate is not None:
-            return self.lookup.translate(ts)
+        if self.localizer is not None:
+            return self.localizer.translate(ts)
         return ts
         
     def _tmpl_loaded(self, tmpl):
@@ -165,16 +155,12 @@ class GenshiTemplateRenderer(object):
         method = self.settings.get('genshi.method', 'html')
         fmt = self.settings.get('genshi.default_format', method)
         encoding = self.settings.get('genshi.default_encoding', 'utf8')
-        kwargs = {}
         doctype = self.settings.get('genshi.default_doctype', None)
+        kwargs = {}
         if doctype is not None:
             kwargs['doctype'] = doctype
         body = stream.render(method=fmt, encoding=encoding, **kwargs)
         return body
-        
-    # implement ITemplateRenderer interface
-    def implementation(self):
-        return self.render
     
     def __call__(self, value, system):
         try:
