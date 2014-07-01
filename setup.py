@@ -43,7 +43,7 @@ setup(
     test_suite="tests",
     install_requires=[
         'Genshi',
-        'Pyramid',
+        'Pyramid>=1.3',
     ],
     extras_require=dict(
         tests=tests_require,
