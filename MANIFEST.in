@@ -1,4 +1,1 @@
-include distribute_setup.py
-include requirements.txt
-include test-requirements.txt
-recursive-include pyramid_genshi *.genshi
+include ez_setup.py README.rst LICNESE.txt
