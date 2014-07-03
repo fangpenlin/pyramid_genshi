@@ -1,269 +1,8 @@
 from __future__ import unicode_literals
-import os
 import unittest
 
-import mock
-from zope.interface.verify import verifyObject
-from pyramid.interfaces import ITemplateRenderer
-from pyramid.testing import setUp
-from pyramid.testing import tearDown
-from pyramid.testing import DummyRequest
-from pyramid.registry import Registry
-from pyramid.threadlocal import get_current_registry
-from pyramid.threadlocal import manager
-from pyramid.threadlocal import defaults
-from pyramid.i18n import TranslationString
-from pyramid.i18n import get_localizer
-from pyramid.renderers import RendererHelper
-from genshi.template.text import NewTextTemplate
-from genshi.filters import Translator 
 
-from pyramid_genshi import includeme
-from pyramid_genshi import renderer_factory
-from pyramid_genshi import GenshiTemplateRenderer
 from pyramid_genshi import TranslationStringAdaptor
-
-
-class DummyLookup(object):
-    auto_reload = True
-    debug = True
-
-    def translate(self, msg):
-        return msg
-
-
-class TestGenshiTemplateRenderer(unittest.TestCase):
-    def setUp(self):
-        registry = Registry()
-        self.config = setUp(registry=registry)
-
-    def tearDown(self):
-        tearDown()
-        
-    def _get_template_path(self, name):
-        here = os.path.abspath(os.path.dirname(__file__))
-        return os.path.join(here, 'fixtures', name)
-        
-    def make_one(self, *arg, **kw):
-        return GenshiTemplateRenderer(*arg, **kw)
-    
-    def test_instance_implements_ITemplate(self):
-        path = self._get_template_path('minimal.genshi')
-        lookup = DummyLookup()
-        verifyObject(ITemplateRenderer, self.make_one(path, lookup))
-    
-    def test_render(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        renderer = self.make_one(path, lookup)
-        result = renderer({}, {})
-        self.assertEqual(result, '<div>\n</div>')
-
-    def test_text_render(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.txt')
-        renderer = self.make_one(path, lookup, template_class=NewTextTemplate)
-        result = renderer({}, {})
-        self.assertEqual(result.strip(), 'Hello, world.')
-        
-    def test_render_method(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        
-        def test_method(method, expected):
-            reg = get_current_registry()
-            reg.settings['genshi.method'] = method
-            renderer = self.make_one(path, lookup)
-            result = renderer({}, {})
-            self.assertEqual(result, expected)
-            
-        test_method(
-            'xml', 
-            '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>'
-        )
-        test_method(
-            'xhtml', 
-            '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>'
-        )
-        test_method(
-            'text', 
-            '\n'
-        )
-        
-        def test_format(method, expected):
-            reg = get_current_registry()
-            reg.settings['genshi.default_format'] = method
-            renderer = self.make_one(path, lookup)
-            result = renderer({}, {})
-            self.assertEqual(result, expected)
-            
-        test_format('xml', 
-                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
-        test_format('xhtml', 
-                    '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>')
-        test_format('text', 
-                    '\n')
-        
-    def test_render_doctype(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        
-        def test_doctype(doctype, expected):
-            reg = get_current_registry()
-            reg.settings['genshi.default_doctype'] = doctype
-            renderer = self.make_one(path, lookup)
-            result = renderer({}, {})
-            self.assertEqual(result, expected)
-            
-        test_doctype(
-            'html5', 
-            '<!DOCTYPE html>\n<div>\n</div>'
-        )
-        test_doctype(
-            'xhtml', 
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"'
-            ' "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n'
-            '<div>\n</div>'
-        )
-        
-    def test_render_encoding(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('chinese.genshi')
-        
-        def test_encoding(encoding, expected):
-            reg = get_current_registry()
-            reg.settings['genshi.default_encoding'] = encoding
-            renderer = self.make_one(path, lookup)
-            result = renderer({}, {})
-            self.assertEqual(result, expected)
-            
-        test_encoding('utf8', 
-                      b'<div>\n\xe4\xb8\xad\xe6\x96\x87\xe5\xad\x97\n</div>')
-        test_encoding('cp950', 
-                      b'<div>\n\xa4\xa4\xa4\xe5\xa6r\n</div>')
-        
-    def test_i18n_msg(self):
-        lookup = DummyLookup()
-
-        def translate(msg):
-            if msg == 'Hello':
-                return 'Hola'
-            return msg
-
-        lookup.translate = translate
-        path = self._get_template_path('i18n_msg.genshi')
-        renderer = self.make_one(path, lookup)
-        result = renderer({}, {})
-        self.assertEqual(result, 
-                         '<div>Hola World</div>')
-        
-    def test_default_domain(self):
-        reg = get_current_registry()
-        reg.settings['genshi.default_domain'] = 'test_domain'
-        lookup = DummyLookup()
-        translate_calls = []
-
-        def translate(msg):
-            translate_calls.append(msg)
-            return msg
-
-        lookup.translate = translate
-        
-        path = self._get_template_path('i18n_msg.genshi')
-        renderer = self.make_one(path, lookup)
-        renderer({}, {})
-        self.assertEqual(len(translate_calls), 2)
-        ts1 = translate_calls[0]
-        ts2 = translate_calls[1]
-        self.assertEqual(ts1.domain, 'test_domain')
-        self.assertEqual(ts2.domain, 'test_domain')
-        
-    def test_i18n_domain(self):
-        reg = get_current_registry()
-        reg.settings['genshi.default_domain'] = 'my_domain'
-        
-        translated_calls = []
-        lookup = DummyLookup()
-
-        def translate(msg):
-            translated_calls.append(msg)
-            return msg
-
-        lookup.translate = translate
-        path = self._get_template_path('i18n_domain.genshi')
-        renderer = self.make_one(path, lookup)
-        renderer({}, {})
-        ts = translated_calls[0]
-        self.assertEqual(ts.domain, 'test_domain')
-
-    def test_implementation_method(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        renderer = self.make_one(path, lookup)
-        self.assertEqual(renderer.implementation(), renderer.render)
-
-    def test_render_with_wrong_argument(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        renderer = self.make_one(path, lookup)
-        with self.assertRaises(ValueError):
-            renderer(None, {})
-
-    def test_translator(self):
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        renderer = self.make_one(path, lookup)
-        self.assertIsInstance(renderer.translator, Translator)
-
-    def test_includeme(self):
-        mock_config = mock.Mock()
-        includeme(mock_config)
-        mock_config.add_renderer.assert_called_once_with(
-            '.genshi', renderer_factory
-        )
-
-    def test_default_translate(self):
-        lookup = DummyLookup()
-        lookup.translate = None
-        path = self._get_template_path('minimal.genshi')
-        renderer = self.make_one(path, lookup)
-        ts = renderer.translate('hello')
-        self.assertIsInstance(ts, TranslationString)
-        self.assertEqual(ts, TranslationString('hello'))
-
-    def test_lookup_with_pluralize(self):
-
-        def mock_pluralize(): 
-            pass
-
-        mock_pluralize()
-
-        lookup = DummyLookup()
-        lookup.pluralize = mock_pluralize
-        path = self._get_template_path('minimal.genshi')
-        renderer = self.make_one(path, lookup)
-        self.assertEqual(renderer.adaptor.pluralize, mock_pluralize)
-
-    def test_lookup_with_request_pluralize(self):
-        request = DummyRequest()
-        localizer = get_localizer(request)
-
-        info = defaults()
-        info['request'] = request
-        info['registry'].settings = {}
-        manager.push(info)
-
-        lookup = DummyLookup()
-        path = self._get_template_path('minimal.genshi')
-        renderer = self.make_one(path, lookup)
-        self.assertEqual(renderer.adaptor.pluralize, localizer.pluralize)
-
-    def test_renderer_factory(self):
-        path = self._get_template_path('minimal.genshi')
-        info = RendererHelper(path)
-        render = renderer_factory(info)
-        self.assertEqual(render.path, path)
-        self.assertIsInstance(render, GenshiTemplateRenderer)
 
 
 class TestTranslationStringAdaptor(unittest.TestCase):
@@ -276,8 +15,10 @@ class TestTranslationStringAdaptor(unittest.TestCase):
         def mock_translate(ts):
             translate_calls.append(ts)
 
-        adaptor = self.make_one(mock_translate, 
-                                default_domain='MOCK_DEFAULT_DOMAIN')
+        adaptor = self.make_one(
+            mock_translate,
+            default_domain='MOCK_DEFAULT_DOMAIN',
+        )
         adaptor.ugettext('hello baby')
 
         self.assertEqual(len(translate_calls), 1)
@@ -345,9 +86,9 @@ class TestTranslationStringAdaptor(unittest.TestCase):
         adaptor = self.make_one(lambda ts: ts, 
                                 pluralize=mock_pluralize)
         adaptor.dungettext(
-            'MOCK_DOMAIN', 
-            'hello one baby', 
-            'hello many babies', 
+            'MOCK_DOMAIN',
+            'hello one baby',
+            'hello many babies',
             5566,
         )
 

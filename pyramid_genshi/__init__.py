@@ -3,26 +3,26 @@ import os
 import logging
 import gettext
 
-from zope.interface import implements
-from pyramid import renderers
-from pyramid.interfaces import ITemplateRenderer
+from pyramid.settings import asbool
+from pyramid.path import AssetResolver
 from pyramid.i18n import TranslationString
 from pyramid.i18n import get_localizer
-from pyramid.threadlocal import get_current_registry
 from pyramid.threadlocal import get_current_request
 from genshi.template import TemplateLoader
 from genshi.filters import Translator
 
+logger = logging.getLogger(__name__)
+
 
 class TranslationStringAdaptor(gettext.NullTranslations):
-    """An adaptor provides gettext Translation interface for Genshi i18n filter, 
-    it converts gettext function calls to TranslationString as argument to 
+    """An adaptor provides gettext Translation interface for Genshi i18n filter,
+    it converts gettext function calls to TranslationString as argument to
     underlying translate and pluralize functions
     
     """
     
     def __init__(self, translate, pluralize=None, default_domain=None):
-        """translate is the function to be called with a TranslationString 
+        """translate is the function to be called with a TranslationString
         argument and return translated string
         
         pluralize is a function to be called with arguments
@@ -59,94 +59,66 @@ class TranslationStringAdaptor(gettext.NullTranslations):
         
     def dungettext(self, domain, msgid1, msgid2, n):
         return self.ungettext(msgid1, msgid2, n, domain)
-    
 
-def renderer_factory(info):
-    # TODO: this is an internal API? maybe we should use a better way
-    # to deal with it
-    return renderers.template_renderer_factory(info, GenshiTemplateRenderer)
-        
+
+class GenshiTemplateRendererFactory(object):
+    def __call__(self, info):
+        resolver = AssetResolver(info.package)
+        tmpl_path = resolver.resolve(info.name).abspath()
+        return GenshiTemplateRenderer(tmpl_path, info.settings)
+
 
 class GenshiTemplateRenderer(object):
-    implements(ITemplateRenderer)
     
     def __init__(
-        self, 
-        path, 
-        lookup, 
-        macro=None, 
-        logger=None, 
+        self,
+        path,
+        settings,
         template_class=None,
     ):
-        self.logger = logger or logging.getLogger(__name__)
         self.path = path
-        self.lookup = lookup
+        self.settings = settings
+        # self.lookup = lookup
         self.template_class = template_class
         
-        # XXX: This is dirty
-        self.settings = {}
-        registry = get_current_registry()
-        if registry is not None:
-            self.settings = registry.settings
         self.default_domain = self.settings.get('genshi.default_domain')
-        
-        # the i18n is available
-        if lookup.translate is not None:
-            # XXX: This is a very dirty hack, too
-            # but this is how Pyramid does - getting request from local thread
-            # IChameleonLookup doesn't provide pluralize there, so we need to
-            # get by it ourself
-            pluralize = None
-            if hasattr(lookup, 'pluralize'):
-                # pluralize should be added to the lookup, but it is not there
-                # see will it be there in the future
-                # this is mainly for test right now
-                pluralize = lookup.pluralize
-            else:
-                request = get_current_request()
-                if request is not None:
-                    pluralize = get_localizer(request).pluralize
-            
+        auto_reload = asbool(self.settings.get('genshi.auto_reload', True))
+        self.loader = TemplateLoader(
+            callback=self._tmpl_loaded,
+            auto_reload=auto_reload,
+        )
+
+        # should we enable i18n?
+        i18n = asbool(self.settings.get('genshi.i18n', True))
+        if i18n:
             self.adaptor = TranslationStringAdaptor(
-                lookup.translate, 
-                pluralize,
+                self.localizer.translate,
+                self.localizer.pluralize,
                 default_domain=self.default_domain
             )
-            self._translator = Translator(self.adaptor)
+            self.translator = Translator(self.adaptor)
         # no i18n available, just use translator with NullTranslations
         else:
-            self._translator = Translator()
-        
-        auto_reload = self.settings.get('genshi.auto_reload', True)
-        self._loader = TemplateLoader(callback=self._tmpl_loaded, 
-                                      auto_reload=auto_reload)
+            self.translator = Translator()
+
+    @property
+    def localizer(self):
+        request = get_current_request()
+        localizer = get_localizer(request)
+        return localizer
                 
     def translate(self, *args, **kwargs):
         kwargs.setdefault('domain', self.default_domain)
         ts = TranslationString(*args, **kwargs)
-        if self.lookup.translate is not None:
-            return self.lookup.translate(ts)
+        if self.localizer is not None:
+            return self.localizer.translate(ts)
         return ts
         
     def _tmpl_loaded(self, tmpl):
         """Called when a template is loadded by loader
         
         """
-        self._translator.setup(tmpl)
-        
-    @property
-    def loader(self):
-        """Genshi template loader
-        
-        """
-        return self._loader
-        
-    @property
-    def translator(self):
-        """Genshi i18n translator filter
-        
-        """
-        return self._translator
+        self.translator.setup(tmpl)
 
     @property
     def template(self):
@@ -154,7 +126,7 @@ class GenshiTemplateRenderer(object):
         
         """
         tmpl = self.loader.load(
-            os.path.abspath(self.path), 
+            os.path.abspath(self.path),
             cls=self.template_class,
         )
         return tmpl
@@ -168,16 +140,12 @@ class GenshiTemplateRenderer(object):
         method = self.settings.get('genshi.method', 'html')
         fmt = self.settings.get('genshi.default_format', method)
         encoding = self.settings.get('genshi.default_encoding', 'utf8')
-        kwargs = {}
         doctype = self.settings.get('genshi.default_doctype', None)
+        kwargs = {}
         if doctype is not None:
             kwargs['doctype'] = doctype
         body = stream.render(method=fmt, encoding=encoding, **kwargs)
         return body
-        
-    # implement ITemplateRenderer interface
-    def implementation(self):
-        return self.render
     
     def __call__(self, value, system):
         try:
@@ -189,4 +157,5 @@ class GenshiTemplateRenderer(object):
 
 
 def includeme(config):
+    renderer_factory = GenshiTemplateRendererFactory()
     config.add_renderer('.genshi', renderer_factory)

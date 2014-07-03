@@ -1,6 +1,6 @@
 import os
 
-from distribute_setup import use_setuptools
+from ez_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup, find_packages
@@ -13,17 +13,14 @@ except:
     README = ''
     CHANGES = ''
 
+tests_require = [
+    'nose',
+    'nose-cov',
+    'mock',
+    'webtest',
+]
 
-def read_requirements(filename):
-    content = open(os.path.join(here, filename)).read()
-    requirements = map(lambda r: r.strip(), content.splitlines())
-    return requirements
-
-
-requirements = read_requirements('requirements.txt')
-test_requirements = read_requirements('test-requirements.txt')
-
-version = '0.1.3'
+version = '0.2.0'
 
 setup(
     name='pyramid_genshi',
@@ -43,7 +40,13 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    test_suite="pyramid_genshi.tests",
-    install_requires=requirements,
-    test_requires=test_requirements, 
+    test_suite="tests",
+    install_requires=[
+        'Genshi',
+        'Pyramid>=1.3',
+    ],
+    extras_require=dict(
+        tests=tests_require,
+    ),
+    test_requires=tests_require,
 )
