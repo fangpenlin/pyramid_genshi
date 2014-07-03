@@ -1,7 +1,9 @@
-0.1.4
+0.2.0
 -----
 
 - Support Pyramid 1.5
+- Stop supporting Pyramid before 1.3
+- Stop supporting text rendering for now, may be added back later
 
 
 0.1.3
