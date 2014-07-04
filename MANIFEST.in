@@ -1,1 +1,1 @@
-include ez_setup.py README.rst LICNESE.txt
+include ez_setup.py README.rst *.txt 
