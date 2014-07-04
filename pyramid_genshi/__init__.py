@@ -65,7 +65,11 @@ class GenshiTemplateRendererFactory(object):
     def __call__(self, info):
         resolver = AssetResolver(info.package)
         tmpl_path = resolver.resolve(info.name).abspath()
-        return GenshiTemplateRenderer(tmpl_path, info.settings)
+        return GenshiTemplateRenderer(
+            path=tmpl_path,
+            settings=info.settings,
+            package=info.package,
+        )
 
 
 class GenshiTemplateRenderer(object):
@@ -74,16 +78,18 @@ class GenshiTemplateRenderer(object):
         self,
         path,
         settings,
+        package=None,
         template_class=None,
     ):
         self.path = path
         self.settings = settings
-        # self.lookup = lookup
+        self.package = package
         self.template_class = template_class
-        
+
         self.default_domain = self.settings.get('genshi.default_domain')
         auto_reload = asbool(self.settings.get('genshi.auto_reload', True))
         self.loader = TemplateLoader(
+            self._load_asset,
             callback=self._tmpl_loaded,
             auto_reload=auto_reload,
         )
@@ -100,6 +106,21 @@ class GenshiTemplateRenderer(object):
         # no i18n available, just use translator with NullTranslations
         else:
             self.translator = Translator()
+
+    def _load_asset(self, filename):
+        """Load pyramid asset resource
+
+        """
+        if ':' not in filename:
+            raise IOError('Not a asset style path')
+        resolver = AssetResolver(self.package)
+        filepath = resolver.resolve(filename).abspath()
+        fileobj = open(filepath, 'rt')
+        mtime = os.path.getmtime(filepath)
+
+        def _uptodate():
+            return mtime == os.path.getmtime(filepath)
+        return filepath, filename, fileobj, _uptodate
 
     @property
     def localizer(self):

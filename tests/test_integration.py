@@ -1,5 +1,9 @@
 from __future__ import unicode_literals
+import os
 import unittest
+import tempfile
+import shutil
+import time
 
 import mock
 import webtest
@@ -169,3 +173,70 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
         testapp = self.make_minimal_app(values=None)
         with self.assertRaises(ValueError):
             testapp.get('/')
+
+    def test_render_assert_path_include(self):
+        testapp = self.make_minimal_app('fixtures/asset_include.genshi')
+        resp = testapp.get('/')
+        self.assertIn('replaced', resp.body)
+
+    def test_render_relative_path_include(self):
+        testapp = self.make_minimal_app('fixtures/relative_include.genshi')
+        resp = testapp.get('/')
+        self.assertIn('replaced', resp.body)
+
+    def test_render_asset_include_auto_reload(self):
+        tmp_dir = tempfile.mkdtemp()
+        fixtures_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
+        try:
+            included = """
+            <div xmlns="http://www.w3.org/1999/xhtml"
+                 xmlns:py="http://genshi.edgewall.org/"
+                 py:strip="True"
+            >
+                <py:match path="span">
+                <span>replaced</span>
+                </py:match>
+            </div>
+            """
+            included_path = os.path.join(fixtures_dir, '_updated_included.genshi')
+            with open(included_path, 'wt') as tmpl_file:
+                tmpl_file.write(included)
+
+            asset_include = """
+            <div xmlns="http://www.w3.org/1999/xhtml"
+                 xmlns:py="http://genshi.edgewall.org/"
+                 xmlns:xi="http://www.w3.org/2001/XInclude"
+            >
+                <xi:include href="tests:fixtures/_updated_included.genshi" />
+                <span>To be replaced</span>
+            </div>
+            """
+            asset_include_path = os.path.join(tmp_dir, 'asset_include.genshi')
+            with open(asset_include_path, 'wt') as tmpl_file:
+                tmpl_file.write(asset_include)
+
+            testapp = self.make_minimal_app(asset_include_path)
+            resp = testapp.get('/')
+            self.assertIn('replaced', resp.body)
+
+            # Notice: we need to sleep for a while, otherwise the modification
+            # time of file will be the same
+            time.sleep(1)
+            included = """
+            <div xmlns="http://www.w3.org/1999/xhtml"
+                 xmlns:py="http://genshi.edgewall.org/"
+                 py:strip="True"
+            >
+                <py:match path="span">
+                <span>updated</span>
+                </py:match>
+            </div>
+            """
+            with open(included_path, 'wt') as tmpl_file:
+                tmpl_file.write(included)
+            resp = testapp.get('/')
+            self.assertIn('updated', resp.body)
+        finally:
+            shutil.rmtree(tmp_dir)
+            if os.path.exists(included_path):
+                os.remove(included_path)
