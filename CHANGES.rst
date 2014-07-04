@@ -1,3 +1,9 @@
+0.2.1
+-----
+
+- Support include template by Pyramid asset path
+
+
 0.2.0
 -----
 
