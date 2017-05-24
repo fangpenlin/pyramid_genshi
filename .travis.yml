@@ -8,9 +8,9 @@ env:
   - PYRAMID_VERSION="pyramid>=1.6,<1.7"
   - PYRAMID_VERSION="pyramid>=1.8,<1.9"
 # command to install dependencies
-install: 
+install:
   - "easy_install -U setuptools"
-  - "pip install flake8 --use-mirrors"
+  - "pip install flake8"
   - "pip install $PYRAMID_VERSION"
   - "pip install -e .[tests]"
 before_script: "flake8 pyramid_genshi --ignore=E501,W291,W293"
