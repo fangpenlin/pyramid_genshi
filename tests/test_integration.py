@@ -50,7 +50,7 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
             values=dict(name='foobar'),
         )
         resp = testapp.get('/')
-        self.assertEqual(resp.body, '<div>\nfoobar\n</div>')
+        self.assertEqual(resp.text, '<div>\nfoobar\n</div>')
 
     def test_render_method_and_format(self):
         testapp = self.make_minimal_app()
@@ -58,8 +58,8 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
         def assert_render_method(method, expected):
             testapp.app.registry.settings['genshi.method'] = method
             resp = testapp.get('/')
-            self.assertEqual(resp.body, expected)
-            
+            self.assertEqual(resp.text, expected)
+
         assert_render_method(
             'xml',
             '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>',
@@ -69,12 +69,12 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
             '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>',
         )
         assert_render_method('text', '\n')
-        
+
         def assert_render_format(format, expected):
             testapp.app.registry.settings['genshi.default_format'] = format
             resp = testapp.get('/')
-            self.assertEqual(resp.body, expected)
-            
+            self.assertEqual(resp.text, expected)
+
         assert_render_format(
             'xml',
             '<div xmlns="http://www.w3.org/1999/xhtml">\n</div>',
@@ -91,8 +91,8 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
         def assert_doctype(doctype, expected):
             testapp.app.registry.settings['genshi.default_doctype'] = doctype
             resp = testapp.get('/')
-            self.assertEqual(resp.body, expected)
-            
+            self.assertEqual(resp.text, expected)
+
         assert_doctype(
             'html5',
             '<!DOCTYPE html>\n<div>\n</div>'
@@ -106,12 +106,12 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
 
     def test_render_encoding(self):
         testapp = self.make_minimal_app('fixtures/chinese.genshi')
-        
+
         def assert_encoding(encoding, expected):
             testapp.app.registry.settings['genshi.default_encoding'] = encoding
             resp = testapp.get('/')
             self.assertEqual(resp.body, expected)
-            
+
         assert_encoding(
             'utf8',
             b'<div>\n\xe4\xb8\xad\xe6\x96\x87\xe5\xad\x97\n</div>',
@@ -132,7 +132,7 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
 
         translate_method.side_effect = translate
         resp = testapp.get('/')
-        self.assertEqual(resp.body, '<div>Hola World</div>')
+        self.assertEqual(resp.text, '<div>Hola World</div>')
 
     @mock.patch('pyramid.i18n.Localizer.translate')
     def test_default_domain(self, translate_method):
@@ -154,7 +154,7 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
         testapp = self.make_minimal_app('fixtures/i18n_domain.genshi')
         testapp.app.registry.settings['genshi.default_domain'] = 'my_domain'
         testapp.get('/')
-        
+
         self.assertEqual(translate_method.call_count, 2)
         ts1 = translate_method.call_args_list[0][0][0]
         ts2 = translate_method.call_args_list[1][0][0]
@@ -177,12 +177,12 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
     def test_render_assert_path_include(self):
         testapp = self.make_minimal_app('fixtures/asset_include.genshi')
         resp = testapp.get('/')
-        self.assertIn('replaced', resp.body)
+        self.assertIn('replaced', resp.text)
 
     def test_render_relative_path_include(self):
         testapp = self.make_minimal_app('fixtures/relative_include.genshi')
         resp = testapp.get('/')
-        self.assertIn('replaced', resp.body)
+        self.assertIn('replaced', resp.text)
 
     def test_render_asset_include_auto_reload(self):
         tmp_dir = tempfile.mkdtemp()
@@ -217,7 +217,7 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
 
             testapp = self.make_minimal_app(asset_include_path)
             resp = testapp.get('/')
-            self.assertIn('replaced', resp.body)
+            self.assertIn('replaced', resp.text)
 
             # Notice: we need to sleep for a while, otherwise the modification
             # time of file will be the same
@@ -235,7 +235,7 @@ class TestGenshiTemplateRendererIntegration(unittest.TestCase):
             with open(included_path, 'wt') as tmpl_file:
                 tmpl_file.write(included)
             resp = testapp.get('/')
-            self.assertIn('updated', resp.body)
+            self.assertIn('updated', resp.text)
         finally:
             shutil.rmtree(tmp_dir)
             if os.path.exists(included_path):
