@@ -3,8 +3,8 @@ pyramid_genshi
 
 Build:
 
-.. image:: https://travis-ci.org/victorlin/pyramid_genshi.png?branch=master   
-  :target: https://travis-ci.org/victorlin/pyramid_genshi
+.. image:: https://travis-ci.org/fangpenlin/pyramid_genshi.png?branch=master   
+  :target: https://travis-ci.org/fangpenlin/pyramid_genshi
 
 Bindings for `Genshi <http://genshi.edgewall.org/>`_ templating support under
 `Pyramid <http://docs.pylonsproject.org/>`_.
